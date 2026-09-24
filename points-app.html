@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Point Manager</title>
+<style>
+  :root{--bg:#0f1115;--card:#191c22;--text:#f2f2f2;--muted:#9aa0a8;--accent:#e53e3e;--ok:#38a169;--border:#2a2e37;
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f5f5f7;--card:#fff;--text:#1a1a1a;--muted:#6b7280;--border:#e5e7eb;}}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:480px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:8px 0 20px}
+  input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:15px}
+  .list{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto}
+  .item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .item:hover{border-color:var(--accent)}
+  .item .name{font-weight:600}
+  .item .code{color:var(--muted);font-size:12px}
+  .item .pt{font-weight:700;font-variant-numeric:tabular-nums}
+  .panel{margin-top:20px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;display:none}
+  .panel.show{display:block}
+  .panel h2{margin:0 0 4px;font-size:18px}
+  .panel .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .row{display:flex;gap:8px;margin-bottom:10px}
+  .row input[type=number]{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px}
+  button{padding:12px 16px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn-minus{background:var(--accent);color:#fff}
+  .btn-plus{background:var(--ok);color:#fff}
+  .status{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:14px;display:none}
+  .status.show{display:block}
+  .status.ok{background:rgba(56,161,105,.15);color:var(--ok)}
+  .status.err{background:rgba(229,62,62,.15);color:var(--accent)}
+  .muted{color:var(--muted);font-size:13px;text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎯 Point Manager</h1>
+  <input type="text" id="search" placeholder="Cari nama atau code name...">
+  <div class="list" id="list"></div>
+
+  <div class="panel" id="panel">
+    <h2 id="pName">-</h2>
+    <div class="sub" id="pCode">-</div>
+    <div class="sub">Point saat ini: <strong id="pPoint">-</strong></div>
+    <div class="row">
+      <input type="number" id="amount" placeholder="Jumlah" min="1" value="1">
+      <button class="btn-minus" onclick="submitChange(-1)">− Kurangi</button>
+      <button class="btn-plus" onclick="submitChange(1)">+ Tambah</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="muted" id="loading">Memuat data staff...</div>
+</div>
+
+<script>
+const WORKER_URL = "https://point-manager.mineversepersonal.workers.dev";
+
+let members = [];
+let selected = null;
+
+async function loadMembers(){
+  const loading = document.getElementById("loading");
+  try{
+    const res = await fetch(WORKER_URL + "/members");
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "Gagal memuat data");
+    members = data.members || [];
+    loading.style.display = "none";
+    renderList(members);
+  }catch(e){
+    loading.textContent = "❌ Gagal memuat: " + e.message + " (cek WORKER_URL sudah diganti?)";
+  }
+}
+
+function renderList(arr){
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  arr.forEach(m=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<div><div class="name"></div><div class="code"></div></div><div class="pt"></div>`;
+    div.querySelector(".name").textContent = m.name;
+    div.querySelector(".code").textContent = m.code;
+    div.querySelector(".pt").textContent = m.point;
+    div.onclick = ()=> selectMember(m);
+    list.appendChild(div);
+  });
+}
+
+function selectMember(m){
+  selected = m;
+  document.getElementById("panel").classList.add("show");
+  document.getElementById("pName").textContent = m.name;
+  document.getElementById("pCode").textContent = m.code;
+  document.getElementById("pPoint").textContent = m.point;
+  document.getElementById("status").className = "status";
+  document.getElementById("panel").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+async function submitChange(sign){
+  if(!selected) return;
+  const amt = parseInt(document.getElementById("amount").value, 10);
+  if(!amt || amt <= 0){ showStatus("Isi jumlah point yang valid.", false); return; }
+  const delta = sign * amt;
+  showStatus("Memproses...", null);
+  try{
+    const res = await fetch(WORKER_URL + "/update", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({pageId: selected.id, delta})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error?.message || data.error || "Gagal update");
+    selected.point = data.newPoint;
+    document.getElementById("pPoint").textContent = data.newPoint;
+    const idx = members.findIndex(x=>x.id===selected.id);
+    if(idx>-1) members[idx].point = data.newPoint;
+    renderList(filterList(document.getElementById("search").value));
+    showStatus(`✅ Berhasil! Point baru: ${data.newPoint}`, true);
+  }catch(e){
+    showStatus("❌ " + e.message, false);
+  }
+}
+
+function showStatus(msg, ok){
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = "status show" + (ok===true?" ok":ok===false?" err":"");
+}
+
+function filterList(q){
+  q = q.trim().toLowerCase();
+  if(!q) return members;
+  return members.filter(m => m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q));
+}
+
+document.getElementById("search").addEventListener("input", e=>{
+  renderList(filterList(e.target.value));
+});
+
+loadMembers();
+</script>
+</body>
+</html>

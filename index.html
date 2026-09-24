@@ -5,54 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Point Manager</title>
 <style>
-  :root{--bg:#0f1115;--card:#191c22;--text:#f2f2f2;--muted:#9aa0a8;--accent:#e53e3e;--ok:#38a169;--border:#2a2e37;
+  :root{--bg:#0b0c10;--card:#181b22;--field:#20242e;--text:#f2f2f2;--muted:#9aa0a8;--accent:#e5484d;--ok:#30a46c;--border:#2a2e37;
     padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
-  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f5f5f7;--card:#fff;--text:#1a1a1a;--muted:#6b7280;--border:#e5e7eb;}}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#eef0f3;--card:#fff;--field:#f2f3f5;--text:#1a1a1a;--muted:#6b7280;--border:#e5e7eb;}}
   *{box-sizing:border-box}
-  body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:480px;margin:0 auto;padding:24px 16px 60px}
-  h1{font-size:22px;margin:8px 0 20px}
-  input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:15px}
-  .list{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto}
-  .item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
-  .item:hover{border-color:var(--accent)}
-  .item .name{font-weight:600}
-  .item .code{color:var(--muted);font-size:12px}
-  .item .pt{font-weight:700;font-variant-numeric:tabular-nums}
-  .panel{margin-top:20px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;display:none}
-  .panel.show{display:block}
-  .panel h2{margin:0 0 4px;font-size:18px}
-  .panel .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
-  .row{display:flex;gap:8px;margin-bottom:10px}
-  .row input[type=number]{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px}
-  button{padding:12px 16px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:24px 20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  h1{font-size:18px;text-align:center;margin:0 0 20px;letter-spacing:.2px}
+  select{width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--field);
+    color:var(--text);font-size:16px;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa0a8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center}
+  .info{display:flex;gap:10px;margin-top:12px}
+  .info .box{flex:1;background:var(--field);border-radius:14px;padding:12px 14px;text-align:center}
+  .info .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .info .value{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .actions{display:flex;gap:10px;margin-top:12px}
+  input[type=number]{flex:1;min-width:0;padding:14px;border-radius:14px;border:1px solid var(--border);
+    background:var(--field);color:var(--text);font-size:18px;text-align:center}
+  input[type=number]::-webkit-inner-spin-button{opacity:1}
+  button{border:none;border-radius:14px;font-size:20px;font-weight:700;cursor:pointer;width:52px;flex-shrink:0}
   .btn-minus{background:var(--accent);color:#fff}
   .btn-plus{background:var(--ok);color:#fff}
-  .status{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:14px;display:none}
+  button:disabled{opacity:.4}
+  .status{margin-top:14px;padding:10px 12px;border-radius:10px;font-size:13px;text-align:center;display:none}
   .status.show{display:block}
-  .status.ok{background:rgba(56,161,105,.15);color:var(--ok)}
-  .status.err{background:rgba(229,62,62,.15);color:var(--accent)}
-  .muted{color:var(--muted);font-size:13px;text-align:center;margin-top:16px}
+  .status.ok{background:rgba(48,164,108,.15);color:var(--ok)}
+  .status.err{background:rgba(229,72,77,.15);color:var(--accent)}
+  .muted{color:var(--muted);font-size:13px;text-align:center}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🎯 Point Manager</h1>
-  <input type="text" id="search" placeholder="Cari nama atau code name...">
-  <div class="list" id="list"></div>
+<div class="card">
+  <h1>🎯 Mineverse Point Manager</h1>
+  <select id="memberSelect"><option value="">Memuat data staff...</option></select>
 
-  <div class="panel" id="panel">
-    <h2 id="pName">-</h2>
-    <div class="sub" id="pCode">-</div>
-    <div class="sub">Point saat ini: <strong id="pPoint">-</strong></div>
-    <div class="row">
-      <input type="number" id="amount" placeholder="Jumlah" min="1" value="1">
-      <button class="btn-minus" onclick="submitChange(-1)">− Kurangi</button>
-      <button class="btn-plus" onclick="submitChange(1)">+ Tambah</button>
-    </div>
-    <div class="status" id="status"></div>
+  <div class="info">
+    <div class="box"><div class="label">ID</div><div class="value" id="pCode">-</div></div>
+    <div class="box"><div class="label">Point</div><div class="value" id="pPoint">-</div></div>
   </div>
-  <div class="muted" id="loading">Memuat data staff...</div>
+
+  <div class="actions">
+    <input type="number" id="amount" min="1" value="1">
+    <button class="btn-minus" id="btnMinus" onclick="submitChange(-1)" disabled>−</button>
+    <button class="btn-plus" id="btnPlus" onclick="submitChange(1)" disabled>+</button>
+  </div>
+
+  <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -62,43 +64,31 @@ let members = [];
 let selected = null;
 
 async function loadMembers(){
-  const loading = document.getElementById("loading");
+  const sel = document.getElementById("memberSelect");
   try{
     const res = await fetch(WORKER_URL + "/members");
     const data = await res.json();
     if(!res.ok) throw new Error(data.error || "Gagal memuat data");
     members = data.members || [];
-    loading.style.display = "none";
-    renderList(members);
+    sel.innerHTML = '<option value="">Pilih nama staff...</option>' +
+      members.map((m,i)=>`<option value="${i}">${m.name}</option>`).join("");
   }catch(e){
-    loading.textContent = "❌ Gagal memuat: " + e.message + " (cek WORKER_URL sudah diganti?)";
+    sel.innerHTML = `<option value="">❌ Gagal memuat data</option>`;
+    showStatus("❌ " + e.message + " (cek WORKER_URL sudah diganti?)", false);
   }
 }
 
-function renderList(arr){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-  arr.forEach(m=>{
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `<div><div class="name"></div><div class="code"></div></div><div class="pt"></div>`;
-    div.querySelector(".name").textContent = m.name;
-    div.querySelector(".code").textContent = m.code;
-    div.querySelector(".pt").textContent = m.point;
-    div.onclick = ()=> selectMember(m);
-    list.appendChild(div);
-  });
-}
-
-function selectMember(m){
-  selected = m;
-  document.getElementById("panel").classList.add("show");
-  document.getElementById("pName").textContent = m.name;
-  document.getElementById("pCode").textContent = m.code;
-  document.getElementById("pPoint").textContent = m.point;
+document.getElementById("memberSelect").addEventListener("change", e=>{
+  const idx = e.target.value;
+  if(idx === ""){ selected = null; document.getElementById("pCode").textContent = "-"; document.getElementById("pPoint").textContent = "-";
+    document.getElementById("btnMinus").disabled = true; document.getElementById("btnPlus").disabled = true; return; }
+  selected = members[idx];
+  document.getElementById("pCode").textContent = selected.code;
+  document.getElementById("pPoint").textContent = selected.point;
+  document.getElementById("btnMinus").disabled = false;
+  document.getElementById("btnPlus").disabled = false;
   document.getElementById("status").className = "status";
-  document.getElementById("panel").scrollIntoView({behavior:"smooth", block:"center"});
-}
+});
 
 async function submitChange(sign){
   if(!selected) return;
@@ -118,7 +108,6 @@ async function submitChange(sign){
     document.getElementById("pPoint").textContent = data.newPoint;
     const idx = members.findIndex(x=>x.id===selected.id);
     if(idx>-1) members[idx].point = data.newPoint;
-    renderList(filterList(document.getElementById("search").value));
     showStatus(`✅ Berhasil! Point baru: ${data.newPoint}`, true);
   }catch(e){
     showStatus("❌ " + e.message, false);
@@ -130,16 +119,6 @@ function showStatus(msg, ok){
   el.textContent = msg;
   el.className = "status show" + (ok===true?" ok":ok===false?" err":"");
 }
-
-function filterList(q){
-  q = q.trim().toLowerCase();
-  if(!q) return members;
-  return members.filter(m => m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q));
-}
-
-document.getElementById("search").addEventListener("input", e=>{
-  renderList(filterList(e.target.value));
-});
 
 loadMembers();
 </script>
